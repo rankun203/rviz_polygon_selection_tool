@@ -38,6 +38,7 @@ public Q_SLOTS:
   void updateFarmingUIState();
   void checkNav2Status();
   void checkMapStatus();
+  void checkFarmingStatus();
   void startTask();
   void onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg);
 
@@ -47,6 +48,9 @@ private:
   
   // Update polygon data from the tool
   void updateFromTool();
+  
+  // Helper method to check if a topic exists and has publishers
+  bool isTopicAvailable(const std::string& topic_name, bool exact_match);
   
   // Topic name for publishing polygon selections
   std::string topic_;
@@ -64,8 +68,6 @@ private:
   QLabel* time_taken_label_;
   QLabel* polygon_area_label_;
   QLabel* task_status_label_;
-  QPushButton* pause_button_;
-  QPushButton* reset_button_;
 
   // ROS elements
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
@@ -73,6 +75,7 @@ private:
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr farming_status_sub_;
   rclcpp::TimerBase::SharedPtr nav2_check_timer_;
   rclcpp::TimerBase::SharedPtr map_check_timer_;
+  rclcpp::TimerBase::SharedPtr farming_status_check_timer_;
   std::vector<geometry_msgs::msg::PolygonStamped> polygons_;
 };
 

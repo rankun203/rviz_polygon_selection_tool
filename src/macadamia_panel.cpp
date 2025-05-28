@@ -13,7 +13,7 @@ namespace rviz_polygon_selection_tool
 MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   : rviz_common::Panel(parent)
   , topic_("/publish_farming_area")
-  , farming_status_("loading")
+  , farming_status_("inactive")
 {
   // Create the main layout
   QVBoxLayout* main_layout = new QVBoxLayout;
@@ -57,15 +57,9 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   grid_layout->addWidget(polygon_area_label_, row++, 1);
 
   grid_layout->addWidget(new QLabel("Task Status:"), row, 0);
-  task_status_label_ = new QLabel("loading");
-  task_status_label_->setStyleSheet("color: #666666;");
+  task_status_label_ = new QLabel("inactive");
+  task_status_label_->setStyleSheet("color: gray;");
   grid_layout->addWidget(task_status_label_, row++, 1);
-
-  pause_button_ = new QPushButton("Pause");
-  grid_layout->addWidget(pause_button_, row++, 0, 1, 2);
-
-  reset_button_ = new QPushButton("Reset");
-  grid_layout->addWidget(reset_button_, row++, 0, 1, 2);
 
   // Add topic selection and publish button
   QHBoxLayout* topic_layout = new QHBoxLayout;
@@ -107,7 +101,7 @@ void MacadamiaFarmPanel::onInitialize()
     10,
     std::bind(&MacadamiaFarmPanel::onFarmingStatusUpdate, this, std::placeholders::_1));
   
-  // Set up timers for checking Nav2 and map status
+  // Set up timers for checking Nav2, map, and farming status
   nav2_check_timer_ = node->create_wall_timer(
     std::chrono::seconds(10), // check every 10 seconds
     std::bind(&MacadamiaFarmPanel::checkNav2Status, this));
@@ -115,18 +109,72 @@ void MacadamiaFarmPanel::onInitialize()
   map_check_timer_ = node->create_wall_timer(
     std::chrono::seconds(10), // check every 10 seconds
     std::bind(&MacadamiaFarmPanel::checkMapStatus, this));
+    
+  farming_status_check_timer_ = node->create_wall_timer(
+    std::chrono::seconds(10), // check every 10 seconds
+    std::bind(&MacadamiaFarmPanel::checkFarmingStatus, this));
   
   // Initial update from the tool
   updateFromTool();
 }
 
+// Helper method to check if a topic exists and has publishers
+bool MacadamiaFarmPanel::isTopicAvailable(const std::string& topic_name, bool exact_match)
+{
+  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  auto topic_names_and_types = node->get_topic_names_and_types();
+  
+  for (const auto& topic_pair : topic_names_and_types) {
+    const std::string& current_topic = topic_pair.first;
+    bool match = exact_match ? 
+                 (current_topic == topic_name) : 
+                 (current_topic.find(topic_name) != std::string::npos);
+    
+    if (match) {
+      // Check if there are publishers for this topic
+      size_t publisher_count = node->count_publishers(current_topic);
+      if (publisher_count > 0) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+void MacadamiaFarmPanel::checkFarmingStatus()
+{
+  // Check if the farming_status topic exists
+  std::string farming_status_topic = "/farming_status";
+  bool farming_status_available = isTopicAvailable(farming_status_topic, true);
+  
+  // If farming_status topic is not available, set task status to inactive
+  if (!farming_status_available) {
+    farming_status_ = "inactive";
+    task_status_label_->setText("inactive");
+    task_status_label_->setStyleSheet("color: gray;");
+  }
+  // If farming_status topic is available and current status is inactive, 
+  // change to loading until we receive an actual status update
+  else if (farming_status_ == "inactive") {
+    farming_status_ = "loading";
+    task_status_label_->setText("loading");
+    task_status_label_->setStyleSheet("color: #666666;");
+  }
+}
+
 void MacadamiaFarmPanel::onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg)
 {
+  // Only update if we received a valid message
   farming_status_ = msg->data;
   task_status_label_->setText(QString::fromStdString(farming_status_));
   
   // Update button appearance based on farming status
-  if (farming_status_ == "loading") {
+  if (farming_status_ == "inactive") {
+    publish_button_->setText("System Inactive");
+    publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(false);
+  } else if (farming_status_ == "loading") {
     publish_button_->setText("System Loading");
     publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
     publish_button_->setEnabled(false);
@@ -159,28 +207,8 @@ void MacadamiaFarmPanel::onFarmingStatusUpdate(const std_msgs::msg::String::Shar
 void MacadamiaFarmPanel::checkNav2Status()
 {
   // Check if Nav2 is available by checking for the existence of the global costmap topic
-  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-  
-  // Check for the global costmap topic
   std::string nav2_topic = "/global_costmap/costmap";
-  
-  // Check if the topic exists and has publishers
-  bool nav2_available = false;
-  
-  // Get the list of topics
-  auto topic_names_and_types = node->get_topic_names_and_types();
-  
-  for (const auto& topic_pair : topic_names_and_types) {
-    const std::string& topic_name = topic_pair.first;
-    if (topic_name.find(nav2_topic) != std::string::npos) {
-      // Check if there are publishers for this topic
-      size_t publisher_count = node->count_publishers(topic_name);
-      if (publisher_count > 0) {
-        nav2_available = true;
-        break;
-      }
-    }
-  }
+  bool nav2_available = isTopicAvailable(nav2_topic, false);
   
   if (nav2_available) {
     navigation_status_label_->setText("active");
@@ -194,28 +222,8 @@ void MacadamiaFarmPanel::checkNav2Status()
 void MacadamiaFarmPanel::checkMapStatus()
 {
   // Check for map availability by checking for the existence of the map topic
-  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-  
-  // Check for the map topic
   std::string map_topic = "/map";
-  
-  // Check if the topic exists and has publishers
-  bool map_available = false;
-  
-  // Get the list of topics
-  auto topic_names_and_types = node->get_topic_names_and_types();
-  
-  for (const auto& topic_pair : topic_names_and_types) {
-    const std::string& topic_name = topic_pair.first;
-    if (topic_name.find(map_topic) != std::string::npos) {
-      // Check if there are publishers for this topic
-      size_t publisher_count = node->count_publishers(topic_name);
-      if (publisher_count > 0) {
-        map_available = true;
-        break;
-      }
-    }
-  }
+  bool map_available = isTopicAvailable(map_topic, false);
   
   if (map_available) {
     localization_status_label_->setText("active");
@@ -309,7 +317,11 @@ void MacadamiaFarmPanel::updateFarmingUIState()
   }
   
   // Update button based on farming status and polygon validity
-  if (farming_status_ == "loading") {
+  if (farming_status_ == "inactive") {
+    publish_button_->setText("System Inactive");
+    publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(false);
+  } else if (farming_status_ == "loading") {
     publish_button_->setText("System Loading");
     publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
     publish_button_->setEnabled(false);
