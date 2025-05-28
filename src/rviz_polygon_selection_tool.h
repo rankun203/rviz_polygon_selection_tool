@@ -6,6 +6,7 @@
 #include <rclcpp/service.hpp>
 #include <rclcpp/publisher.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
+#include <QPushButton>
 
 #include "version_check.hpp"
 #ifdef CALLBACK_GROUP_SUPPORTED
@@ -72,7 +73,6 @@ private:
   rviz_common::properties::FloatProperty* text_size_property_;
   rviz_common::properties::FloatProperty* points_gap_size_property_;
   rviz_common::properties::StringProperty* topic_property_;
-  rviz_common::properties::BoolProperty* publish_button_property_;
 
 #ifdef CALLBACK_GROUP_SUPPORTED
   std::thread executor_thread_;
@@ -92,6 +92,9 @@ private:
   Ogre::SceneNode* text_node_;
   Ogre::MaterialPtr points_material_;
   Ogre::MaterialPtr lines_material_;
+  
+  // Publish button in the canvas
+  QPushButton* publish_button_;
 };
 
 }  // namespace rviz_polygon_selection_tool

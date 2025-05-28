@@ -8,6 +8,7 @@
 #include <rviz_common/display_context.hpp>
 #include <rviz_common/viewport_mouse_event.hpp>
 #include <rviz_common/interaction/view_picker.hpp>
+#include <rviz_common/view_manager.hpp>
 #include <rviz_common/properties/bool_property.hpp>
 #include <rviz_common/properties/color_property.hpp>
 #include <rviz_common/properties/float_property.hpp>
@@ -26,7 +27,7 @@ static void updateMaterialColor(Ogre::MaterialPtr material, const QColor& color)
 
 namespace rviz_polygon_selection_tool
 {
-PolygonSelectionTool::PolygonSelectionTool() : rviz_common::Tool()
+PolygonSelectionTool::PolygonSelectionTool() : rviz_common::Tool(), publish_button_(nullptr)
 {
   shortcut_key_ = 'p';
 }
@@ -49,6 +50,13 @@ PolygonSelectionTool::~PolygonSelectionTool()
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(points_node_);
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(lines_node_);
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(text_node_);
+  
+  // Clean up the publish button
+  if (publish_button_)
+  {
+    delete publish_button_;
+    publish_button_ = nullptr;
+  }
 }
 
 void PolygonSelectionTool::onInitialize()
@@ -110,9 +118,6 @@ void PolygonSelectionTool::onInitialize()
 
   topic_property_ = new rviz_common::properties::StringProperty(
       "Topic", "/polygon_selection", "Topic name for publishing polygon selections", getPropertyContainer());
-      
-  publish_button_property_ = new rviz_common::properties::BoolProperty(
-      "Publish Polygons", false, "Click to publish polygons to the topic", getPropertyContainer(), SLOT(publishPolygons()), this);
 
   // Create the publisher
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(
@@ -127,11 +132,45 @@ void PolygonSelectionTool::onInitialize()
 
 void PolygonSelectionTool::activate()
 {
+  // Create the publish button if it doesn't exist
+  if (!publish_button_)
+  {
+    publish_button_ = new QPushButton("Publish Polygons");
+    publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setFixedSize(150, 40);
+    
+    // Position the button in the bottom right corner of the canvas
+    QWidget* parent_widget = context_->getViewManager()->getRenderPanel();
+    if (parent_widget)
+    {
+      publish_button_->setParent(parent_widget);
+      
+      // Position in the bottom right with some margin
+      int margin = 20;
+      int x = parent_widget->width() - publish_button_->width() - margin;
+      int y = parent_widget->height() - publish_button_->height() - margin;
+      publish_button_->move(x, y);
+      
+      // Connect the button to the publishPolygons slot
+      connect(publish_button_, &QPushButton::clicked, this, &PolygonSelectionTool::publishPolygons);
+      
+      // Show the button
+      publish_button_->show();
+    }
+  }
 }
 
 void PolygonSelectionTool::deactivate()
 {
   updateText();
+  
+  // Hide and delete the publish button
+  if (publish_button_)
+  {
+    publish_button_->hide();
+    delete publish_button_;
+    publish_button_ = nullptr;
+  }
 }
 
 void PolygonSelectionTool::newPolygon()
