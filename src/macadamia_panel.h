@@ -42,13 +42,17 @@ public Q_SLOTS:
   void onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg);
 
 private:
-  // Current farming status
-  std::string farming_status_;
   // Calculate the area of a polygon
   double calculatePolygonArea(const geometry_msgs::msg::PolygonStamped& polygon);
   
   // Update polygon data from the tool
   void updateFromTool();
+  
+  // Topic name for publishing polygon selections
+  std::string topic_;
+  
+  // Current farming status
+  std::string farming_status_;
 
   // UI elements
   QLineEdit* topic_editor_;
@@ -70,7 +74,6 @@ private:
   rclcpp::TimerBase::SharedPtr nav2_check_timer_;
   rclcpp::TimerBase::SharedPtr map_check_timer_;
   std::vector<geometry_msgs::msg::PolygonStamped> polygons_;
-  std::string topic_;
 };
 
 } // namespace rviz_polygon_selection_tool
