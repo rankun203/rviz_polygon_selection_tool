@@ -11,6 +11,7 @@
 #include <rviz_common/properties/bool_property.hpp>
 #include <rviz_common/properties/color_property.hpp>
 #include <rviz_common/properties/float_property.hpp>
+#include <rviz_common/properties/string_property.hpp>
 #include <rviz_rendering/material_manager.hpp>
 #include <rviz_rendering/objects/movable_text.hpp>
 
@@ -106,6 +107,16 @@ void PolygonSelectionTool::onInitialize()
 
   points_gap_size_property_ = new rviz_common::properties::FloatProperty(
       "Point Generation Gap", 0.002, "Separation between adjacent points in a polygon (m)", getPropertyContainer());
+
+  publish_to_topic_property_ = new rviz_common::properties::BoolProperty(
+      "Publish to topic", false, "Enable publishing polygons to a topic when completed", getPropertyContainer());
+
+  topic_property_ = new rviz_common::properties::StringProperty(
+      "Topic", "/polygon_selection", "Topic name for publishing polygon selections", getPropertyContainer());
+
+  // Create the publisher
+  polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(
+      topic_property_->getStdString(), 10);
 
   points_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode("points");
   lines_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode("lines");
@@ -243,6 +254,11 @@ int PolygonSelectionTool::processMouseEvent(rviz_common::ViewportMouseEvent& eve
     if (!points_.back().empty())
     {
       updateText();
+      // Publish polygons if enabled
+      if (publish_to_topic_property_->getBool())
+      {
+        publishPolygons();
+      }
       newPolygon();
     }
   }
@@ -336,6 +352,39 @@ void PolygonSelectionTool::updateText()
   text_pos /= static_cast<Ogre::Real>(points_.back().size());
 
   last_child_scene->setPosition(text_pos);
+}
+
+void PolygonSelectionTool::publishPolygons()
+{
+  // Update the publisher topic if it has changed
+  rclcpp::Node::SharedPtr node = context_->getRosNodeAbstraction().lock()->get_raw_node();
+  std::string current_topic = topic_property_->getStdString();
+  
+  // Recreate publisher if topic changed
+  polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(current_topic, 10);
+
+  // Publish all valid polygons
+  for (std::size_t i = 0; i < points_.size(); ++i)
+  {
+    // Skip selections with fewer than 3 points
+    if (points_[i].size() < 3)
+      continue;
+
+    geometry_msgs::msg::PolygonStamped polygon;
+    polygon.header.stamp = node->now();
+    polygon.header.frame_id = context_->getFixedFrame().toStdString();
+    
+    for (const Ogre::Vector3& pt : points_[i])
+    {
+      geometry_msgs::msg::Point32 msg;
+      msg.x = pt.x;
+      msg.y = pt.y;
+      msg.z = pt.z;
+      polygon.polygon.points.push_back(msg);
+    }
+
+    polygon_publisher_->publish(polygon);
+  }
 }
 
 void PolygonSelectionTool::callback(const srv::GetSelection::Request::SharedPtr /*req*/,

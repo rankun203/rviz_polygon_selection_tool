@@ -4,6 +4,8 @@
 #include <OgreVector3.h>
 #include <rviz_common/tool.hpp>
 #include <rclcpp/service.hpp>
+#include <rclcpp/publisher.hpp>
+#include <geometry_msgs/msg/polygon_stamped.hpp>
 
 #include "version_check.hpp"
 #ifdef CALLBACK_GROUP_SUPPORTED
@@ -24,6 +26,7 @@ namespace properties
 class BoolProperty;
 class ColorProperty;
 class FloatProperty;
+class StringProperty;
 }  // namespace properties
 }  // namespace rviz_common
 
@@ -58,6 +61,7 @@ private:
   void callback(const srv::GetSelection::Request::SharedPtr, const srv::GetSelection::Response::SharedPtr res);
   void updateText();
   void removeDisplays();
+  void publishPolygons();
 
   rviz_common::properties::BoolProperty* lasso_mode_property_;
   rviz_common::properties::BoolProperty* close_loop_property_;
@@ -67,6 +71,8 @@ private:
   rviz_common::properties::BoolProperty* text_visibility_property_;
   rviz_common::properties::FloatProperty* text_size_property_;
   rviz_common::properties::FloatProperty* points_gap_size_property_;
+  rviz_common::properties::BoolProperty* publish_to_topic_property_;
+  rviz_common::properties::StringProperty* topic_property_;
 
 #ifdef CALLBACK_GROUP_SUPPORTED
   std::thread executor_thread_;
@@ -75,6 +81,7 @@ private:
 #endif
 
   rclcpp::Service<srv::GetSelection>::SharedPtr server_;
+  rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
 
   /** @brief Polygon points in 3D space*/
   std::vector<std::vector<Ogre::Vector3>> points_;
