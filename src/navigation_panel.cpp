@@ -92,9 +92,6 @@ void MacadamiaFarmPanel::onInitialize()
   auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(topic_, 10);
   
-  // Create a client to check for map availability
-  map_client_ = node->create_client<nav2_msgs::srv::GetMaps>("/map_server/map");
-  
   // Set up timers for checking Nav2 and map status
   nav2_check_timer_ = node->create_wall_timer(
     std::chrono::seconds(10), // check every 10 seconds
@@ -110,10 +107,29 @@ void MacadamiaFarmPanel::onInitialize()
 
 void MacadamiaFarmPanel::checkNav2Status()
 {
-  // Check if Nav2 action server is available
-  // For now, we'll just simulate this with a basic check
+  // Check if Nav2 is available by checking for the existence of the global costmap topic
   auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
-  bool nav2_available = true; // In a real implementation, we would check for the action server
+  
+  // Check for the global costmap topic
+  std::string nav2_topic = "/global_costmap/costmap";
+  
+  // Check if the topic exists and has publishers
+  bool nav2_available = false;
+  
+  // Get the list of topics
+  auto topic_names_and_types = node->get_topic_names_and_types();
+  
+  for (const auto& topic_pair : topic_names_and_types) {
+    const std::string& topic_name = topic_pair.first;
+    if (topic_name.find(nav2_topic) != std::string::npos) {
+      // Check if there are publishers for this topic
+      size_t publisher_count = node->count_publishers(topic_name);
+      if (publisher_count > 0) {
+        nav2_available = true;
+        break;
+      }
+    }
+  }
   
   if (nav2_available) {
     navigation_status_label_->setText("active");
@@ -126,8 +142,31 @@ void MacadamiaFarmPanel::checkNav2Status()
 
 void MacadamiaFarmPanel::checkMapStatus()
 {
-  // Check if map is available
-  if (map_client_->service_is_ready()) {
+  // Check for map availability by checking for the existence of the map topic
+  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  
+  // Check for the map topic
+  std::string map_topic = "/map";
+  
+  // Check if the topic exists and has publishers
+  bool map_available = false;
+  
+  // Get the list of topics
+  auto topic_names_and_types = node->get_topic_names_and_types();
+  
+  for (const auto& topic_pair : topic_names_and_types) {
+    const std::string& topic_name = topic_pair.first;
+    if (topic_name.find(map_topic) != std::string::npos) {
+      // Check if there are publishers for this topic
+      size_t publisher_count = node->count_publishers(topic_name);
+      if (publisher_count > 0) {
+        map_available = true;
+        break;
+      }
+    }
+  }
+  
+  if (map_available) {
     localization_status_label_->setText("active");
     localization_status_label_->setStyleSheet("color: green; font-weight: bold;");
   } else {

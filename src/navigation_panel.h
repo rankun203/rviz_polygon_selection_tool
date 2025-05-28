@@ -4,7 +4,6 @@
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/client.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <nav2_msgs/srv/get_maps.hpp>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -59,7 +58,6 @@ private:
 
   // ROS elements
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
-  rclcpp::Client<nav2_msgs::srv::GetMaps>::SharedPtr map_client_;
   rclcpp::TimerBase::SharedPtr nav2_check_timer_;
   rclcpp::TimerBase::SharedPtr map_check_timer_;
   std::vector<geometry_msgs::msg::PolygonStamped> polygons_;
