@@ -52,7 +52,7 @@ PolygonSelectionTool::~PolygonSelectionTool()
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(points_node_);
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(lines_node_);
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(text_node_);
-  
+
   // Clean up the publish button
   if (publish_button_)
   {
@@ -122,8 +122,7 @@ void PolygonSelectionTool::onInitialize()
       "Topic", "/polygon_selection", "Topic name for publishing polygon selections", getPropertyContainer());
 
   // Create the publisher
-  polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(
-      topic_property_->getStdString(), 10);
+  polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(topic_property_->getStdString(), 10);
 
   points_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode("points");
   lines_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode("lines");
@@ -140,27 +139,27 @@ void PolygonSelectionTool::activate()
     publish_button_ = new QPushButton("Publish Polygons");
     publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
     publish_button_->setFixedSize(150, 40);
-    
+
     // Connect the button to the publishPolygons slot
     connect(publish_button_, &QPushButton::clicked, this, &PolygonSelectionTool::publishPolygons);
-    
+
     // Try to get the main window as parent
     QWidget* main_window = nullptr;
     if (context_->getWindowManager())
     {
       main_window = context_->getWindowManager()->getParentWindow();
     }
-    
+
     // If we got a main window, add the button to it
     if (main_window)
     {
       publish_button_->setParent(main_window);
-      
+
       // Position in the top area where indicated in the image
-      int x = 150; // Position from left
-      int y = 150; // Position from top
+      int x = 150;  // Position from left
+      int y = 150;  // Position from top
       publish_button_->move(x, y);
-      
+
       // Show the button
       publish_button_->show();
       publish_button_->raise();
@@ -171,7 +170,7 @@ void PolygonSelectionTool::activate()
 void PolygonSelectionTool::deactivate()
 {
   updateText();
-  
+
   // Hide and delete the publish button
   if (publish_button_)
   {
@@ -401,7 +400,7 @@ void PolygonSelectionTool::publishPolygons()
   // Update the publisher topic if it has changed
   rclcpp::Node::SharedPtr node = context_->getRosNodeAbstraction().lock()->get_raw_node();
   std::string current_topic = topic_property_->getStdString();
-  
+
   // Recreate publisher if topic changed
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(current_topic, 10);
 
@@ -415,7 +414,7 @@ void PolygonSelectionTool::publishPolygons()
     geometry_msgs::msg::PolygonStamped polygon;
     polygon.header.stamp = node->now();
     polygon.header.frame_id = context_->getFixedFrame().toStdString();
-    
+
     for (const Ogre::Vector3& pt : points_[i])
     {
       geometry_msgs::msg::Point32 msg;
