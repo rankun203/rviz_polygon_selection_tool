@@ -108,11 +108,11 @@ void PolygonSelectionTool::onInitialize()
   points_gap_size_property_ = new rviz_common::properties::FloatProperty(
       "Point Generation Gap", 0.002, "Separation between adjacent points in a polygon (m)", getPropertyContainer());
 
-  publish_to_topic_property_ = new rviz_common::properties::BoolProperty(
-      "Publish to topic", false, "Enable publishing polygons to a topic when completed", getPropertyContainer());
-
   topic_property_ = new rviz_common::properties::StringProperty(
       "Topic", "/polygon_selection", "Topic name for publishing polygon selections", getPropertyContainer());
+      
+  publish_button_property_ = new rviz_common::properties::BoolProperty(
+      "Publish Polygons", false, "Click to publish polygons to the topic", getPropertyContainer(), SLOT(publishPolygons()), this);
 
   // Create the publisher
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(
@@ -254,11 +254,6 @@ int PolygonSelectionTool::processMouseEvent(rviz_common::ViewportMouseEvent& eve
     if (!points_.back().empty())
     {
       updateText();
-      // Publish polygons if enabled
-      if (publish_to_topic_property_->getBool())
-      {
-        publishPolygons();
-      }
       newPolygon();
     }
   }

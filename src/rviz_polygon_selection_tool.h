@@ -56,12 +56,12 @@ public Q_SLOTS:
   void updateVisual();
   void updateTextVisibility();
   void updateTextSize();
+  void publishPolygons();
 
 private:
   void callback(const srv::GetSelection::Request::SharedPtr, const srv::GetSelection::Response::SharedPtr res);
   void updateText();
   void removeDisplays();
-  void publishPolygons();
 
   rviz_common::properties::BoolProperty* lasso_mode_property_;
   rviz_common::properties::BoolProperty* close_loop_property_;
@@ -71,8 +71,8 @@ private:
   rviz_common::properties::BoolProperty* text_visibility_property_;
   rviz_common::properties::FloatProperty* text_size_property_;
   rviz_common::properties::FloatProperty* points_gap_size_property_;
-  rviz_common::properties::BoolProperty* publish_to_topic_property_;
   rviz_common::properties::StringProperty* topic_property_;
+  rviz_common::properties::BoolProperty* publish_button_property_;
 
 #ifdef CALLBACK_GROUP_SUPPORTED
   std::thread executor_thread_;
