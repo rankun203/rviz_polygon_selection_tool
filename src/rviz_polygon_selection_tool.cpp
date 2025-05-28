@@ -144,7 +144,27 @@ void PolygonSelectionTool::activate()
     // Connect the button to the publishPolygons slot
     connect(publish_button_, &QPushButton::clicked, this, &PolygonSelectionTool::publishPolygons);
     
-    // We'll position the button in processMouseEvent when we get the first event
+    // Try to get the main window as parent
+    QWidget* main_window = nullptr;
+    if (context_->getWindowManager())
+    {
+      main_window = context_->getWindowManager()->getParentWindow();
+    }
+    
+    // If we got a main window, add the button to it
+    if (main_window)
+    {
+      publish_button_->setParent(main_window);
+      
+      // Position in the top area where indicated in the image
+      int x = 150; // Position from left
+      int y = 150; // Position from top
+      publish_button_->move(x, y);
+      
+      // Show the button
+      publish_button_->show();
+      publish_button_->raise();
+    }
   }
 }
 
@@ -230,26 +250,6 @@ void PolygonSelectionTool::removeDisplays()
 
 int PolygonSelectionTool::processMouseEvent(rviz_common::ViewportMouseEvent& event)
 {
-  // Position and show the publish button if it exists but isn't shown yet
-  if (publish_button_ && !publish_button_->isVisible())
-  {
-    QWidget* parent_widget = event.panel;
-    if (parent_widget)
-    {
-      publish_button_->setParent(parent_widget);
-      
-      // Position in the bottom right with some margin
-      int margin = 20;
-      int x = parent_widget->width() - publish_button_->width() - margin;
-      int y = parent_widget->height() - publish_button_->height() - margin;
-      publish_button_->move(x, y);
-      
-      // Show the button
-      publish_button_->show();
-      publish_button_->raise();
-    }
-  }
-  
   // Collect the point
   if (event.leftUp() || (event.left() && lasso_mode_property_->getBool()))
   {
