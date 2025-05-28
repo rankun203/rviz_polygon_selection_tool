@@ -6,7 +6,6 @@
 #include <rclcpp/service.hpp>
 #include <rclcpp/publisher.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
-#include <QPushButton>
 
 #include "version_check.hpp"
 #ifdef CALLBACK_GROUP_SUPPORTED
@@ -58,6 +57,9 @@ public Q_SLOTS:
   void updateTextVisibility();
   void updateTextSize();
   void publishPolygons();
+  
+  // Get the polygon data for use by other components
+  std::vector<geometry_msgs::msg::PolygonStamped> getPolygonData() const;
 
 private:
   void callback(const srv::GetSelection::Request::SharedPtr, const srv::GetSelection::Response::SharedPtr res);
@@ -93,8 +95,6 @@ private:
   Ogre::MaterialPtr points_material_;
   Ogre::MaterialPtr lines_material_;
   
-  // Publish button in the canvas
-  QPushButton* publish_button_;
 };
 
 }  // namespace rviz_polygon_selection_tool

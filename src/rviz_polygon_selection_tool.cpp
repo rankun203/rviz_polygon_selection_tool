@@ -29,7 +29,7 @@ static void updateMaterialColor(Ogre::MaterialPtr material, const QColor& color)
 
 namespace rviz_polygon_selection_tool
 {
-PolygonSelectionTool::PolygonSelectionTool() : rviz_common::Tool(), publish_button_(nullptr)
+PolygonSelectionTool::PolygonSelectionTool() : rviz_common::Tool()
 {
   shortcut_key_ = 'p';
 }
@@ -53,12 +53,6 @@ PolygonSelectionTool::~PolygonSelectionTool()
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(lines_node_);
   scene_manager_->getRootSceneNode()->removeAndDestroyChild(text_node_);
 
-  // Clean up the publish button
-  if (publish_button_)
-  {
-    delete publish_button_;
-    publish_button_ = nullptr;
-  }
 }
 
 void PolygonSelectionTool::onInitialize()
@@ -133,51 +127,12 @@ void PolygonSelectionTool::onInitialize()
 
 void PolygonSelectionTool::activate()
 {
-  // Create the publish button if it doesn't exist
-  if (!publish_button_)
-  {
-    publish_button_ = new QPushButton("Publish Polygons");
-    publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
-    publish_button_->setFixedSize(150, 40);
-
-    // Connect the button to the publishPolygons slot
-    connect(publish_button_, &QPushButton::clicked, this, &PolygonSelectionTool::publishPolygons);
-
-    // Try to get the main window as parent
-    QWidget* main_window = nullptr;
-    if (context_->getWindowManager())
-    {
-      main_window = context_->getWindowManager()->getParentWindow();
-    }
-
-    // If we got a main window, add the button to it
-    if (main_window)
-    {
-      publish_button_->setParent(main_window);
-
-      // Position in the top area where indicated in the image
-      int x = 150;  // Position from left
-      int y = 150;  // Position from top
-      publish_button_->move(x, y);
-
-      // Show the button
-      publish_button_->show();
-      publish_button_->raise();
-    }
-  }
+  // No need to create a publish button anymore as it's in the panel
 }
 
 void PolygonSelectionTool::deactivate()
 {
   updateText();
-
-  // Hide and delete the publish button
-  if (publish_button_)
-  {
-    publish_button_->hide();
-    delete publish_button_;
-    publish_button_ = nullptr;
-  }
 }
 
 void PolygonSelectionTool::newPolygon()
@@ -428,10 +383,11 @@ void PolygonSelectionTool::publishPolygons()
   }
 }
 
-void PolygonSelectionTool::callback(const srv::GetSelection::Request::SharedPtr /*req*/,
-                                    const srv::GetSelection::Response::SharedPtr res)
+std::vector<geometry_msgs::msg::PolygonStamped> PolygonSelectionTool::getPolygonData() const
 {
-  res->selection.reserve(points_.size());
+  std::vector<geometry_msgs::msg::PolygonStamped> polygons;
+  polygons.reserve(points_.size());
+  
   for (std::size_t i = 0; i < points_.size(); ++i)
   {
     // Skip selections with fewer than 3 points
@@ -440,6 +396,7 @@ void PolygonSelectionTool::callback(const srv::GetSelection::Request::SharedPtr 
 
     geometry_msgs::msg::PolygonStamped polygon;
     polygon.header.frame_id = context_->getFixedFrame().toStdString();
+    
     for (const Ogre::Vector3& pt : points_[i])
     {
       geometry_msgs::msg::Point32 msg;
@@ -449,8 +406,16 @@ void PolygonSelectionTool::callback(const srv::GetSelection::Request::SharedPtr 
       polygon.polygon.points.push_back(msg);
     }
 
-    res->selection.push_back(polygon);
+    polygons.push_back(polygon);
   }
+  
+  return polygons;
+}
+
+void PolygonSelectionTool::callback(const srv::GetSelection::Request::SharedPtr /*req*/,
+                                    const srv::GetSelection::Response::SharedPtr res)
+{
+  res->selection = getPolygonData();
 }
 
 void PolygonSelectionTool::updateVisual()

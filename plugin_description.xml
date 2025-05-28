@@ -4,5 +4,9 @@
       Rviz tool for collecting a polygon selection boundary
     </description>
   </class>
+  <class name="rviz_polygon_selection_tool/MacadamiaFarmPanel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
+    <description>
+      Macadamia Farm panel for displaying Geo-fence information and controlling tasks
+    </description>
+  </class>
 </library>
-
