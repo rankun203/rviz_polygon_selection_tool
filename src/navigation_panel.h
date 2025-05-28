@@ -36,6 +36,7 @@ public Q_SLOTS:
   void updatePolygonInfo();
   void checkNav2Status();
   void checkMapStatus();
+  void startTask();
 
 private:
   // Calculate the area of a polygon
