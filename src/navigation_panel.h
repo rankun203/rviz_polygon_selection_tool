@@ -38,6 +38,9 @@ public Q_SLOTS:
 private:
   // Calculate the area of a polygon
   double calculatePolygonArea(const geometry_msgs::msg::PolygonStamped& polygon);
+  
+  // Update polygon data from the tool
+  void updateFromTool();
 
   // UI elements
   QLineEdit* topic_editor_;
