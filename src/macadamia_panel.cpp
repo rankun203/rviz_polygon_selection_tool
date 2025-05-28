@@ -13,7 +13,7 @@ namespace rviz_polygon_selection_tool
 MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   : rviz_common::Panel(parent)
   , topic_("/publish_farming_area")
-  , farming_status_("idle")
+  , farming_status_("loading")
 {
   // Create the main layout
   QVBoxLayout* main_layout = new QVBoxLayout;
@@ -57,7 +57,7 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   grid_layout->addWidget(polygon_area_label_, row++, 1);
 
   grid_layout->addWidget(new QLabel("Task Status:"), row, 0);
-  task_status_label_ = new QLabel("idle");
+  task_status_label_ = new QLabel("loading");
   task_status_label_->setStyleSheet("color: #666666;");
   grid_layout->addWidget(task_status_label_, row++, 1);
 
