@@ -113,7 +113,7 @@ void PolygonSelectionTool::onInitialize()
       "Point Generation Gap", 0.002, "Separation between adjacent points in a polygon (m)", getPropertyContainer());
 
   topic_property_ = new rviz_common::properties::StringProperty(
-      "Topic", "/polygon_selection", "Topic name for publishing polygon selections", getPropertyContainer());
+      "Topic", "/publish_farming_area", "Topic name for publishing polygon selections", getPropertyContainer());
 
   // Create the publisher
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(topic_property_->getStdString(), 10);

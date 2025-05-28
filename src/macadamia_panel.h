@@ -3,7 +3,9 @@
 #include <rviz_common/panel.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/client.hpp>
+#include <rclcpp/subscription.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -32,13 +34,16 @@ public:
 
 public Q_SLOTS:
   void updateTopic();
-  void publishPolygons();
-  void updatePolygonInfo();
+  void handleFarmingTaskControl();
+  void updateFarmingUIState();
   void checkNav2Status();
   void checkMapStatus();
   void startTask();
+  void onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg);
 
 private:
+  // Current farming status
+  std::string farming_status_;
   // Calculate the area of a polygon
   double calculatePolygonArea(const geometry_msgs::msg::PolygonStamped& polygon);
   
@@ -54,11 +59,14 @@ private:
   QLabel* distance_remaining_label_;
   QLabel* time_taken_label_;
   QLabel* polygon_area_label_;
+  QLabel* task_status_label_;
   QPushButton* pause_button_;
   QPushButton* reset_button_;
 
   // ROS elements
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr farming_action_pub_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr farming_status_sub_;
   rclcpp::TimerBase::SharedPtr nav2_check_timer_;
   rclcpp::TimerBase::SharedPtr map_check_timer_;
   std::vector<geometry_msgs::msg::PolygonStamped> polygons_;

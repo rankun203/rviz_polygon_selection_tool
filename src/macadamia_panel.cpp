@@ -1,4 +1,4 @@
-#include "navigation_panel.h"
+#include "macadamia_panel.h"
 #include "rviz_polygon_selection_tool.h"
 
 #include <QGridLayout>
@@ -12,14 +12,15 @@ namespace rviz_polygon_selection_tool
 
 MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   : rviz_common::Panel(parent)
-  , topic_("/polygon_selection")
+  , topic_("/publish_farming_area")
+  , farming_status_("idle")
 {
   // Create the main layout
   QVBoxLayout* main_layout = new QVBoxLayout;
   setLayout(main_layout);
 
   // Create a group box for the macadamia farm panel
-  QGroupBox* navigation_group = new QGroupBox("Macadamia Farm");
+  QGroupBox* navigation_group = new QGroupBox("Farming Robot Status");
   main_layout->addWidget(navigation_group);
 
   QGridLayout* grid_layout = new QGridLayout;
@@ -55,6 +56,11 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
   grid_layout->addWidget(polygon_area_label_, row++, 1);
 
+  grid_layout->addWidget(new QLabel("Task Status:"), row, 0);
+  task_status_label_ = new QLabel("idle");
+  task_status_label_->setStyleSheet("color: #666666;");
+  grid_layout->addWidget(task_status_label_, row++, 1);
+
   pause_button_ = new QPushButton("Pause");
   grid_layout->addWidget(pause_button_, row++, 0, 1, 2);
 
@@ -75,7 +81,7 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
 
   // Connect signals and slots
   connect(topic_editor_, &QLineEdit::editingFinished, this, &MacadamiaFarmPanel::updateTopic);
-  connect(publish_button_, &QPushButton::clicked, this, &MacadamiaFarmPanel::publishPolygons);
+  connect(publish_button_, &QPushButton::clicked, this, &MacadamiaFarmPanel::handleFarmingTaskControl);
   
   // Create a timer to update the polygon information periodically
   QTimer* update_timer = new QTimer(this);
@@ -92,6 +98,15 @@ void MacadamiaFarmPanel::onInitialize()
   auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(topic_, 10);
   
+  // Create publisher for farming action
+  farming_action_pub_ = node->create_publisher<std_msgs::msg::String>("/farming_action", 10);
+  
+  // Subscribe to farming status topic
+  farming_status_sub_ = node->create_subscription<std_msgs::msg::String>(
+    "/farming_status",
+    10,
+    std::bind(&MacadamiaFarmPanel::onFarmingStatusUpdate, this, std::placeholders::_1));
+  
   // Set up timers for checking Nav2 and map status
   nav2_check_timer_ = node->create_wall_timer(
     std::chrono::seconds(10), // check every 10 seconds
@@ -103,6 +118,42 @@ void MacadamiaFarmPanel::onInitialize()
   
   // Initial update from the tool
   updateFromTool();
+}
+
+void MacadamiaFarmPanel::onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg)
+{
+  farming_status_ = msg->data;
+  task_status_label_->setText(QString::fromStdString(farming_status_));
+  
+  // Update button appearance based on farming status
+  if (farming_status_ == "loading") {
+    publish_button_->setText("System Loading");
+    publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(false);
+  } else if (farming_status_ == "idle" || farming_status_ == "task_done") {
+    // Check if we have a valid polygon
+    bool has_valid_polygon = false;
+    for (const auto& polygon : polygons_) {
+      if (polygon.polygon.points.size() >= 3) {
+        has_valid_polygon = true;
+        break;
+      }
+    }
+    
+    if (has_valid_polygon) {
+      publish_button_->setText("Start Collecting Macadamia");
+      publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
+      publish_button_->setEnabled(true);
+    } else {
+      publish_button_->setText("Start Collecting Macadamia");
+      publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+      publish_button_->setEnabled(false);
+    }
+  } else if (farming_status_ == "task_accepted" || farming_status_ == "task_started" || farming_status_ == "task_failed") {
+    publish_button_->setText("Cancel");
+    publish_button_->setStyleSheet("background-color: #f44336; color: white; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(true);
+  }
 }
 
 void MacadamiaFarmPanel::checkNav2Status()
@@ -231,10 +282,10 @@ void MacadamiaFarmPanel::updateTopic()
 void MacadamiaFarmPanel::setPolygonData(const std::vector<geometry_msgs::msg::PolygonStamped>& polygons)
 {
   polygons_ = polygons;
-  updatePolygonInfo();
+  updateFarmingUIState();
 }
 
-void MacadamiaFarmPanel::updatePolygonInfo()
+void MacadamiaFarmPanel::updateFarmingUIState()
 {
   double total_area = 0.0;
   bool has_valid_polygon = false;
@@ -248,32 +299,60 @@ void MacadamiaFarmPanel::updatePolygonInfo()
     }
   }
   
-  // Update the area label and button based on whether we have a valid polygon
+  // Update the area label
   if (has_valid_polygon) {
     polygon_area_label_->setText(QString::number(total_area, 'f', 2) + " m²");
     polygon_area_label_->setStyleSheet("color: black;");
-    publish_button_->setText("Start Collecting Macadamia");
-    publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
-    publish_button_->setEnabled(true);
   } else {
     polygon_area_label_->setText("Please draw the task area first");
     polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
-    publish_button_->setText("Start Collecting Macadamia");
+  }
+  
+  // Update button based on farming status and polygon validity
+  if (farming_status_ == "loading") {
+    publish_button_->setText("System Loading");
     publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
     publish_button_->setEnabled(false);
+  } else if (farming_status_ == "idle" || farming_status_ == "task_done") {
+    publish_button_->setText("Start Collecting Macadamia");
+    if (has_valid_polygon) {
+      publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
+      publish_button_->setEnabled(true);
+    } else {
+      publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+      publish_button_->setEnabled(false);
+    }
+  } else if (farming_status_ == "task_accepted" || farming_status_ == "task_started" || farming_status_ == "task_failed") {
+    publish_button_->setText("Cancel");
+    publish_button_->setStyleSheet("background-color: #f44336; color: white; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(true);
   }
 }
 
-void MacadamiaFarmPanel::publishPolygons()
+void MacadamiaFarmPanel::handleFarmingTaskControl()
 {
+  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  
+  // Check if we're in a task active state (task_accepted, task_started, task_failed)
+  if (farming_status_ == "task_accepted" || farming_status_ == "task_started" || farming_status_ == "task_failed") {
+    // Send a cancel command to the robot
+    std_msgs::msg::String action_msg;
+    action_msg.data = "cancel";
+    farming_action_pub_->publish(action_msg);
+    
+    // Note: The actual status will be updated when we receive a new status message from the robot
+    // We don't update farming_status_ here as it should be updated via the subscription callback
+    
+    return;
+  }
+  
+  // Normal publish mode - start collecting macadamia
   if (!polygon_publisher_ || polygons_.empty())
   {
     return;
   }
-
-  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   
-  // Publish all valid polygons
+  // First publish all valid polygons to define the farming area
   for (const auto& polygon : polygons_)
   {
     // Skip selections with fewer than 3 points
@@ -285,12 +364,20 @@ void MacadamiaFarmPanel::publishPolygons()
     
     polygon_publisher_->publish(msg);
   }
+  
+  // Then send a start command to the robot
+  std_msgs::msg::String action_msg;
+  action_msg.data = "start";
+  farming_action_pub_->publish(action_msg);
+  
+  // Note: The actual status will be updated when we receive a new status message from the robot
+  // We don't update farming_status_ here as it should be updated via the subscription callback
 }
 
 void MacadamiaFarmPanel::startTask()
 {
-  // This method will publish the polygons and potentially trigger other actions
-  publishPolygons();
+  // This method will handle the farming task control and potentially trigger other actions
+  handleFarmingTaskControl();
   
   // Update the UI to indicate the task has started
   navigation_status_label_->setText("active");

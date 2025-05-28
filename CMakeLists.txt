@@ -40,8 +40,8 @@ rosidl_generate_interfaces(
 add_library(${PROJECT_NAME}_plugin SHARED 
   src/rviz_polygon_selection_tool.cpp 
   src/rviz_polygon_selection_tool.h
-  src/navigation_panel.cpp
-  src/navigation_panel.h
+  src/macadamia_panel.cpp
+  src/macadamia_panel.h
 )
 ament_target_dependencies(${PROJECT_NAME}_plugin rviz_common pluginlib)
 rosidl_get_typesupport_target(msgs_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
