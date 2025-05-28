@@ -2,7 +2,9 @@
 
 #include <rviz_common/panel.hpp>
 #include <rclcpp/publisher.hpp>
+#include <rclcpp/client.hpp>
 #include <geometry_msgs/msg/polygon_stamped.hpp>
+#include <nav2_msgs/srv/get_maps.hpp>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -33,7 +35,8 @@ public Q_SLOTS:
   void updateTopic();
   void publishPolygons();
   void updatePolygonInfo();
-  void startTask();
+  void checkNav2Status();
+  void checkMapStatus();
 
 private:
   // Calculate the area of a polygon
@@ -47,19 +50,18 @@ private:
   QPushButton* publish_button_;
   QLabel* navigation_status_label_;
   QLabel* localization_status_label_;
-  QLabel* feedback_status_label_;
-  QLabel* poses_remaining_label_;
   QLabel* eta_label_;
   QLabel* distance_remaining_label_;
   QLabel* time_taken_label_;
-  QLabel* recoveries_label_;
   QLabel* polygon_area_label_;
-  QPushButton* start_task_button_;
   QPushButton* pause_button_;
   QPushButton* reset_button_;
 
   // ROS elements
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
+  rclcpp::Client<nav2_msgs::srv::GetMaps>::SharedPtr map_client_;
+  rclcpp::TimerBase::SharedPtr nav2_check_timer_;
+  rclcpp::TimerBase::SharedPtr map_check_timer_;
   std::vector<geometry_msgs::msg::PolygonStamped> polygons_;
   std::string topic_;
 };

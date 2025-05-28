@@ -6,7 +6,7 @@
   </class>
   <class name="rviz_polygon_selection_tool/MacadamiaFarmPanel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
     <description>
-      Macadamia Farm panel for displaying Geo-fence information and controlling tasks
+      Macadamia Farm panel for monitoring and controlling macadamia collection tasks
     </description>
   </class>
 </library>

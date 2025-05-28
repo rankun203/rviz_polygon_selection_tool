@@ -27,23 +27,15 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
 
   // Add status labels
   int row = 0;
-  grid_layout->addWidget(new QLabel("Navigation:"), row, 0);
+  grid_layout->addWidget(new QLabel("Navigation (Nav 2):"), row, 0);
   navigation_status_label_ = new QLabel("active");
   navigation_status_label_->setStyleSheet("color: green; font-weight: bold;");
   grid_layout->addWidget(navigation_status_label_, row++, 1);
 
-  grid_layout->addWidget(new QLabel("Localization:"), row, 0);
+  grid_layout->addWidget(new QLabel("Localization (SLAM Toolbox):"), row, 0);
   localization_status_label_ = new QLabel("inactive");
   localization_status_label_->setStyleSheet("color: gray;");
   grid_layout->addWidget(localization_status_label_, row++, 1);
-
-  grid_layout->addWidget(new QLabel("Feedback:"), row, 0);
-  feedback_status_label_ = new QLabel("unknown");
-  grid_layout->addWidget(feedback_status_label_, row++, 1);
-
-  grid_layout->addWidget(new QLabel("Poses remaining:"), row, 0);
-  poses_remaining_label_ = new QLabel("0");
-  grid_layout->addWidget(poses_remaining_label_, row++, 1);
 
   grid_layout->addWidget(new QLabel("ETA:"), row, 0);
   eta_label_ = new QLabel("0 s");
@@ -57,19 +49,11 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   time_taken_label_ = new QLabel("0 s");
   grid_layout->addWidget(time_taken_label_, row++, 1);
 
-  grid_layout->addWidget(new QLabel("Recoveries:"), row, 0);
-  recoveries_label_ = new QLabel("0");
-  grid_layout->addWidget(recoveries_label_, row++, 1);
-
-  // Add polygon area information
-  grid_layout->addWidget(new QLabel("Polygon Area:"), row, 0);
-  polygon_area_label_ = new QLabel("0.00 m²");
+  // Add task area information
+  grid_layout->addWidget(new QLabel("Task Area:"), row, 0);
+  polygon_area_label_ = new QLabel("Please draw the task area first");
+  polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
   grid_layout->addWidget(polygon_area_label_, row++, 1);
-
-  // Add buttons
-  start_task_button_ = new QPushButton("Start Task");
-  start_task_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
-  grid_layout->addWidget(start_task_button_, row++, 0, 1, 2);
 
   pause_button_ = new QPushButton("Pause");
   grid_layout->addWidget(pause_button_, row++, 0, 1, 2);
@@ -85,14 +69,13 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   topic_editor_ = new QLineEdit(QString::fromStdString(topic_));
   topic_layout->addWidget(topic_editor_);
 
-  publish_button_ = new QPushButton("Publish Polygons");
+  publish_button_ = new QPushButton("Start Collecting Macadamia");
   publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
   main_layout->addWidget(publish_button_);
 
   // Connect signals and slots
   connect(topic_editor_, &QLineEdit::editingFinished, this, &MacadamiaFarmPanel::updateTopic);
   connect(publish_button_, &QPushButton::clicked, this, &MacadamiaFarmPanel::publishPolygons);
-  connect(start_task_button_, &QPushButton::clicked, this, &MacadamiaFarmPanel::startTask);
   
   // Create a timer to update the polygon information periodically
   QTimer* update_timer = new QTimer(this);
@@ -109,8 +92,48 @@ void MacadamiaFarmPanel::onInitialize()
   auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
   polygon_publisher_ = node->create_publisher<geometry_msgs::msg::PolygonStamped>(topic_, 10);
   
+  // Create a client to check for map availability
+  map_client_ = node->create_client<nav2_msgs::srv::GetMaps>("/map_server/map");
+  
+  // Set up timers for checking Nav2 and map status
+  nav2_check_timer_ = node->create_wall_timer(
+    std::chrono::seconds(10), // check every 10 seconds
+    std::bind(&MacadamiaFarmPanel::checkNav2Status, this));
+    
+  map_check_timer_ = node->create_wall_timer(
+    std::chrono::seconds(10), // check every 10 seconds
+    std::bind(&MacadamiaFarmPanel::checkMapStatus, this));
+  
   // Initial update from the tool
   updateFromTool();
+}
+
+void MacadamiaFarmPanel::checkNav2Status()
+{
+  // Check if Nav2 action server is available
+  // For now, we'll just simulate this with a basic check
+  auto node = getDisplayContext()->getRosNodeAbstraction().lock()->get_raw_node();
+  bool nav2_available = true; // In a real implementation, we would check for the action server
+  
+  if (nav2_available) {
+    navigation_status_label_->setText("active");
+    navigation_status_label_->setStyleSheet("color: green; font-weight: bold;");
+  } else {
+    navigation_status_label_->setText("inactive");
+    navigation_status_label_->setStyleSheet("color: gray;");
+  }
+}
+
+void MacadamiaFarmPanel::checkMapStatus()
+{
+  // Check if map is available
+  if (map_client_->service_is_ready()) {
+    localization_status_label_->setText("active");
+    localization_status_label_->setStyleSheet("color: green; font-weight: bold;");
+  } else {
+    localization_status_label_->setText("inactive");
+    localization_status_label_->setStyleSheet("color: gray;");
+  }
 }
 
 void MacadamiaFarmPanel::updateFromTool()
@@ -175,17 +198,31 @@ void MacadamiaFarmPanel::setPolygonData(const std::vector<geometry_msgs::msg::Po
 void MacadamiaFarmPanel::updatePolygonInfo()
 {
   double total_area = 0.0;
+  bool has_valid_polygon = false;
   
   for (const auto& polygon : polygons_)
   {
     if (polygon.polygon.points.size() >= 3)
     {
       total_area += calculatePolygonArea(polygon);
+      has_valid_polygon = true;
     }
   }
   
-  // Update the area label
-  polygon_area_label_->setText(QString::number(total_area, 'f', 2) + " m²");
+  // Update the area label and button based on whether we have a valid polygon
+  if (has_valid_polygon) {
+    polygon_area_label_->setText(QString::number(total_area, 'f', 2) + " m²");
+    polygon_area_label_->setStyleSheet("color: black;");
+    publish_button_->setText("Start Collecting Macadamia");
+    publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(true);
+  } else {
+    polygon_area_label_->setText("Please draw the task area first");
+    polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
+    publish_button_->setText("Start Collecting Macadamia");
+    publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
+    publish_button_->setEnabled(false);
+  }
 }
 
 void MacadamiaFarmPanel::publishPolygons()

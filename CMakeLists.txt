@@ -23,6 +23,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(pluginlib REQUIRED)
+find_package(nav2_msgs REQUIRED)
 
 # Include the 'rosidl_get_typesupport_target' target on distros earlier than Galactic
 if(DEFINED ENV{ROS_DISTRO})
@@ -43,7 +44,7 @@ add_library(${PROJECT_NAME}_plugin SHARED
   src/navigation_panel.cpp
   src/navigation_panel.h
 )
-ament_target_dependencies(${PROJECT_NAME}_plugin rviz_common pluginlib)
+ament_target_dependencies(${PROJECT_NAME}_plugin rviz_common pluginlib nav2_msgs)
 rosidl_get_typesupport_target(msgs_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(${PROJECT_NAME}_plugin ${msgs_target})
 
@@ -55,6 +56,7 @@ ament_export_dependencies(
   geometry_msgs
   rosidl_default_runtime
   rviz_common
-  pluginlib)
+  pluginlib
+  nav2_msgs)
 pluginlib_export_plugin_description_file(rviz_common plugin_description.xml)
 ament_package()
