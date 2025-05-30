@@ -1,12 +1,12 @@
 <library path="rviz_polygon_selection_tool_plugin">
-  <class name="rviz_polygon_selection_tool/PolygonSelectionTool" type="rviz_polygon_selection_tool::PolygonSelectionTool" base_class_type="rviz_common::Tool">
+  <class name="Macadamia Task Area" type="rviz_polygon_selection_tool::PolygonSelectionTool" base_class_type="rviz_common::Tool">
     <description>
-      Rviz tool for collecting a polygon selection boundary
+      Macadamia Task - Tool for drawing task areas for macadamia collection
     </description>
   </class>
-  <class name="rviz_polygon_selection_tool/MacadamiaFarmPanel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
+  <class name="Macadamia Farm Panel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
     <description>
-      Macadamia Farm panel for monitoring and controlling macadamia collection tasks
+      Macadamia Farm Panel - Monitor and control macadamia collection tasks
     </description>
   </class>
 </library>
