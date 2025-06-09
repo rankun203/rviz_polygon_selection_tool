@@ -57,6 +57,9 @@ private:
   
   // Current farming status
   std::string farming_status_;
+  
+  // Task area confirmation state
+  bool task_area_confirmed_;
 
   // UI elements
   QLineEdit* topic_editor_;

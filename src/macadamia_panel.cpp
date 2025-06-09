@@ -14,6 +14,7 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   : rviz_common::Panel(parent)
   , topic_("/publish_farming_area")
   , farming_status_("inactive")
+  , task_area_confirmed_(false)
 {
   // Create the main layout
   QVBoxLayout* main_layout = new QVBoxLayout;
@@ -289,7 +290,10 @@ void MacadamiaFarmPanel::updateTopic()
 
 void MacadamiaFarmPanel::setPolygonData(const std::vector<geometry_msgs::msg::PolygonStamped>& polygons)
 {
-  polygons_ = polygons;
+  // Only update polygon data if task area hasn't been confirmed yet
+  if (!task_area_confirmed_) {
+    polygons_ = polygons;
+  }
   updateFarmingUIState();
 }
 
@@ -309,8 +313,11 @@ void MacadamiaFarmPanel::updateFarmingUIState()
   
   // Update the area label
   if (has_valid_polygon) {
-    polygon_area_label_->setText(QString::number(total_area, 'f', 2) + " m²");
-    polygon_area_label_->setStyleSheet("color: black;");
+    polygon_area_label_->setText(QString::number(total_area, 'f', 2) + " m² (not confirmed)");
+    polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
+  } else if (task_area_confirmed_) {
+    polygon_area_label_->setText("Task area confirmed");
+    polygon_area_label_->setStyleSheet("color: green; font-weight: bold;");
   } else {
     polygon_area_label_->setText("Please draw the task area first");
     polygon_area_label_->setStyleSheet("color: #666666; font-style: italic;");
@@ -326,11 +333,17 @@ void MacadamiaFarmPanel::updateFarmingUIState()
     publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
     publish_button_->setEnabled(false);
   } else if (farming_status_ == "idle" || farming_status_ == "task_done") {
-    publish_button_->setText("Start Collecting Macadamia");
+    // Check if we have an unconfirmed polygon selection
     if (has_valid_polygon) {
+      publish_button_->setText("Confirm Task Area");
+      publish_button_->setStyleSheet("background-color: #2196F3; color: white; font-weight: bold; padding: 8px 16px;");
+      publish_button_->setEnabled(true);
+    } else if (task_area_confirmed_) {
+      publish_button_->setText("Start Collecting Macadamia");
       publish_button_->setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 16px;");
       publish_button_->setEnabled(true);
     } else {
+      publish_button_->setText("Start Collecting Macadamia");
       publish_button_->setStyleSheet("background-color: #cccccc; color: #666666; font-weight: bold; padding: 8px 16px;");
       publish_button_->setEnabled(false);
     }
@@ -358,32 +371,55 @@ void MacadamiaFarmPanel::handleFarmingTaskControl()
     return;
   }
   
-  // Normal publish mode - start collecting macadamia
-  if (!polygon_publisher_ || polygons_.empty())
-  {
+  // Check if we have a valid polygon to confirm
+  bool has_valid_polygon = false;
+  for (const auto& polygon : polygons_) {
+    if (polygon.polygon.points.size() >= 3) {
+      has_valid_polygon = true;
+      break;
+    }
+  }
+  
+  // Step 1: Confirm task area (publish polygon and clear selection)
+  if (has_valid_polygon && !task_area_confirmed_) {
+    if (!polygon_publisher_) {
+      return;
+    }
+    
+    // Publish all valid polygons to define the farming area
+    for (const auto& polygon : polygons_) {
+      // Skip selections with fewer than 3 points
+      if (polygon.polygon.points.size() < 3)
+        continue;
+
+      geometry_msgs::msg::PolygonStamped msg = polygon;
+      msg.header.stamp = node->now();
+      
+      polygon_publisher_->publish(msg);
+    }
+    
+    // Mark task area as confirmed and clear the polygon selection
+    task_area_confirmed_ = true;
+    
+    // Clear local polygons (the UI will show confirmed state)
+    polygons_.clear();
+    
+    // Update UI state
+    updateFarmingUIState();
+    
     return;
   }
   
-  // First publish all valid polygons to define the farming area
-  for (const auto& polygon : polygons_)
-  {
-    // Skip selections with fewer than 3 points
-    if (polygon.polygon.points.size() < 3)
-      continue;
-
-    geometry_msgs::msg::PolygonStamped msg = polygon;
-    msg.header.stamp = node->now();
+  // Step 2: Start collecting macadamia (task area already confirmed)
+  if (task_area_confirmed_ && !has_valid_polygon) {
+    // Send a start command to the robot
+    std_msgs::msg::String action_msg;
+    action_msg.data = "start";
+    farming_action_pub_->publish(action_msg);
     
-    polygon_publisher_->publish(msg);
+    // Note: The actual status will be updated when we receive a new status message from the robot
+    // We don't update farming_status_ here as it should be updated via the subscription callback
   }
-  
-  // Then send a start command to the robot
-  std_msgs::msg::String action_msg;
-  action_msg.data = "start";
-  farming_action_pub_->publish(action_msg);
-  
-  // Note: The actual status will be updated when we receive a new status message from the robot
-  // We don't update farming_status_ here as it should be updated via the subscription callback
 }
 
 void MacadamiaFarmPanel::startTask()
