@@ -4,7 +4,7 @@
       Macadamia Task - Tool for drawing task areas for macadamia collection
     </description>
   </class>
-  <class name="Macadamia Farm Panel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
+  <class name="rviz_polygon_selection_tool/MacadamiaFarmPanel" type="rviz_polygon_selection_tool::MacadamiaFarmPanel" base_class_type="rviz_common::Panel">
     <description>
       Macadamia Farm Panel - Monitor and control macadamia collection tasks
     </description>
