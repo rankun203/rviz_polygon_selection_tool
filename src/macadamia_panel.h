@@ -11,6 +11,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QDoubleSpinBox>
 #include <memory>
 
 namespace rviz_polygon_selection_tool
@@ -41,6 +42,7 @@ public Q_SLOTS:
   void checkFarmingStatus();
   void startTask();
   void onFarmingStatusUpdate(const std_msgs::msg::String::SharedPtr msg);
+  void onGridSizeChanged();
 
 private:
   // Calculate the area of a polygon
@@ -71,10 +73,13 @@ private:
   QLabel* time_taken_label_;
   QLabel* polygon_area_label_;
   QLabel* task_status_label_;
+  QLineEdit* grid_size_editor_;
+  QLabel* grid_size_label_;
 
   // ROS elements
   rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_publisher_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr farming_action_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr farming_config_pub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr farming_status_sub_;
   rclcpp::TimerBase::SharedPtr nav2_check_timer_;
   rclcpp::TimerBase::SharedPtr map_check_timer_;

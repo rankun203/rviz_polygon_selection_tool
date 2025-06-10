@@ -62,6 +62,20 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   task_status_label_->setStyleSheet("color: gray;");
   grid_layout->addWidget(task_status_label_, row++, 1);
 
+  // Add grid size configuration
+  grid_layout->addWidget(new QLabel("Grid Size:"), row, 0);
+  QHBoxLayout* grid_size_layout = new QHBoxLayout;
+  grid_size_editor_ = new QLineEdit("0.5");
+  grid_size_editor_->setMaximumWidth(80);
+  grid_size_label_ = new QLabel("m");
+  grid_size_layout->addWidget(grid_size_editor_);
+  grid_size_layout->addWidget(grid_size_label_);
+  grid_size_layout->addStretch();
+  
+  QWidget* grid_size_widget = new QWidget;
+  grid_size_widget->setLayout(grid_size_layout);
+  grid_layout->addWidget(grid_size_widget, row++, 1);
+
   // Add topic selection and publish button
   QHBoxLayout* topic_layout = new QHBoxLayout;
   main_layout->addLayout(topic_layout);
@@ -77,6 +91,7 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   // Connect signals and slots
   connect(topic_editor_, &QLineEdit::editingFinished, this, &MacadamiaFarmPanel::updateTopic);
   connect(publish_button_, &QPushButton::clicked, this, &MacadamiaFarmPanel::handleFarmingTaskControl);
+  connect(grid_size_editor_, &QLineEdit::editingFinished, this, &MacadamiaFarmPanel::onGridSizeChanged);
   
   // Create a timer to update the polygon information periodically
   QTimer* update_timer = new QTimer(this);
@@ -95,6 +110,9 @@ void MacadamiaFarmPanel::onInitialize()
   
   // Create publisher for farming action
   farming_action_pub_ = node->create_publisher<std_msgs::msg::String>("/farming_action", 10);
+  
+  // Create publisher for farming configuration
+  farming_config_pub_ = node->create_publisher<std_msgs::msg::String>("/farming_config", 10);
   
   // Subscribe to farming status topic
   farming_status_sub_ = node->create_subscription<std_msgs::msg::String>(
@@ -435,6 +453,28 @@ void MacadamiaFarmPanel::startTask()
   // - Starting a timer
   // - Enabling/disabling certain UI elements
   // - Sending additional ROS messages
+}
+
+void MacadamiaFarmPanel::onGridSizeChanged()
+{
+  // Get the grid size value from the text editor
+  QString grid_size_text = grid_size_editor_->text();
+  bool conversion_ok = false;
+  double grid_size_value = grid_size_text.toDouble(&conversion_ok);
+  
+  // Validate the input
+  if (!conversion_ok || grid_size_value <= 0.0) {
+    // Invalid input, reset to default
+    grid_size_editor_->setText("0.5");
+    grid_size_value = 0.5;
+  }
+  
+  // Publish the configuration update
+  if (farming_config_pub_) {
+    std_msgs::msg::String config_msg;
+    config_msg.data = "grid_size=" + std::to_string(grid_size_value);
+    farming_config_pub_->publish(config_msg);
+  }
 }
 
 double MacadamiaFarmPanel::calculatePolygonArea(const geometry_msgs::msg::PolygonStamped& polygon)
