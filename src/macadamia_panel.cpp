@@ -63,7 +63,7 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   grid_layout->addWidget(task_status_label_, row++, 1);
 
   // Add grid size configuration
-  grid_layout->addWidget(new QLabel("Grid Size:"), row, 0);
+  grid_layout->addWidget(new QLabel("Cell Size:"), row, 0);
   QHBoxLayout* grid_size_layout = new QHBoxLayout;
   grid_size_editor_ = new QLineEdit("0.5");
   grid_size_editor_->setMaximumWidth(80);
