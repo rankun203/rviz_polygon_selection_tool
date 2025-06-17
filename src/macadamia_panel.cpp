@@ -39,17 +39,17 @@ MacadamiaFarmPanel::MacadamiaFarmPanel(QWidget* parent)
   localization_status_label_->setStyleSheet("color: gray;");
   grid_layout->addWidget(localization_status_label_, row++, 1);
 
-  grid_layout->addWidget(new QLabel("ETA:"), row, 0);
-  eta_label_ = new QLabel("0 s");
-  grid_layout->addWidget(eta_label_, row++, 1);
+  // grid_layout->addWidget(new QLabel("ETA:"), row, 0);
+  // eta_label_ = new QLabel("0 s");
+  // grid_layout->addWidget(eta_label_, row++, 1);
 
-  grid_layout->addWidget(new QLabel("Distance remaining:"), row, 0);
-  distance_remaining_label_ = new QLabel("0.00 m");
-  grid_layout->addWidget(distance_remaining_label_, row++, 1);
+  // grid_layout->addWidget(new QLabel("Distance remaining:"), row, 0);
+  // distance_remaining_label_ = new QLabel("0.00 m");
+  // grid_layout->addWidget(distance_remaining_label_, row++, 1);
 
-  grid_layout->addWidget(new QLabel("Time taken:"), row, 0);
-  time_taken_label_ = new QLabel("0 s");
-  grid_layout->addWidget(time_taken_label_, row++, 1);
+  // grid_layout->addWidget(new QLabel("Time taken:"), row, 0);
+  // time_taken_label_ = new QLabel("0 s");
+  // grid_layout->addWidget(time_taken_label_, row++, 1);
 
   // Add task area information
   grid_layout->addWidget(new QLabel("Task Area:"), row, 0);
